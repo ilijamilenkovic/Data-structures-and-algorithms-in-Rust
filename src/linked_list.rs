@@ -124,15 +124,87 @@ impl LinkedList {
         }
     }
     pub fn pop_back(&mut self) -> Option<i32> {
-        todo!()
+        //taking self.head, leaving it with None. If self.head is None itself, None is returned from function.
+        let mut current_node = self.head.take()?;
+
+        //checking if self.head is the tail of the list
+        if let None = current_node.next {
+            return Some(current_node.value);
+        }
+
+        let mut prev_next = &mut self.head;
+
+        while current_node.next.is_some() {
+            let next_node = current_node.next.take()?;
+            *prev_next = Some(current_node);
+            current_node = next_node;
+            //proceed to the next one
+            prev_next = &mut prev_next.as_mut().unwrap().next;
+        }
+
+        Some(current_node.value)
     }
 
-    pub fn push_in_position(&mut self, index: i32) {
-        todo!()
+    pub fn push_in_position(&mut self, index: i32, value: i32) -> Result<(), &str> {
+        if index == 0 {
+            self.push_head(value);
+            return Ok(());
+        }
+        let mut curr_index = 0;
+        let mut curr_node = self.head.take();
+        let mut prev_node = &mut self.head;
+
+        while curr_index < index - 1 && curr_node.is_some() {
+            let next_node = curr_node.as_mut().unwrap().next.take();
+            *prev_node = curr_node;
+            curr_node = next_node;
+
+            prev_node = &mut prev_node.as_mut().unwrap().next;
+            curr_index += 1;
+        }
+
+        if curr_index != index - 1 {
+            return Err("Index out of bounds");
+        } else {
+            if curr_node.is_some() {
+                let next_node = curr_node.as_mut().unwrap().next.take();
+                *prev_node = curr_node;
+                //let next_node = curr_node.as_mut().unwrap().next.take();
+                (*prev_node).as_mut().unwrap().next = Some(Box::new(Node::new(value, next_node)));
+            }
+        }
+        Ok(())
     }
 
-    pub fn pop_from_position(&mut self, index: i32) {
-        todo!()
+    pub fn pop_from_position(&mut self, index: i32) -> Option<i32> {
+        if index == 0 {
+            return self.pop_head();
+        }
+
+        let mut current_node = self.head.take();
+        let mut current_index = 0;
+        let mut prev_node = &mut self.head;
+        while current_node.is_some() && current_index < index - 1 {
+            let next_node = current_node.as_mut().unwrap().next.take();
+
+            *prev_node = current_node;
+            current_node = next_node;
+
+            prev_node = &mut (*prev_node).as_mut().unwrap().next;
+            current_index += 1;
+        }
+        if current_index != index - 1 {
+            return None;
+        } else {
+            if current_node.is_some() {
+                let mut return_node = current_node.as_mut().unwrap().next.take()?;
+                *prev_node = current_node;
+                let new_next = return_node.next.take();
+                (*prev_node).as_mut().unwrap().next = new_next;
+                return Some(return_node.value);
+            }
+            return None;
+        }
     }
 }
 
@@ -193,9 +265,43 @@ fn it_pushes_back_and_pops() {
     ll.push_back(3);
     ll.push_back(4);
     ll.push_back(5);
-    let _s = ll.pop_back().unwrap();
+    let s = ll.pop_back().unwrap();
 
-    println!("{}", ll);
+    assert_eq!(s, 5);
+
     let vec: Vec<i32> = ll.into();
     assert_eq!(vec, vec![3, 4]);
+}
+
+#[test]
+fn it_pushes_into_place_and_pops() {
+    let mut ll = LinkedList::new();
+    ll.push_in_position(0, 0).unwrap();
+    ll.push_in_position(1, 1).unwrap();
+    ll.push_in_position(1, 2).unwrap();
+    ll.push_in_position(2, 12).unwrap();
+    let test = ll.push_in_position(23, 23);
+    match test {
+        Ok(_) => {
+            panic!("Wrong");
+        }
+        Err(str) => {
+            assert_eq!("Index out of bounds", str);
+        }
+    }
+
+    let popped_value = ll.pop_from_position(2);
+    assert_eq!(popped_value, Some(12));
+    let popped_value = ll.pop_from_position(123);
+    assert_eq!(popped_value, None);
+    let popped_value = ll.pop_from_position(1);
+    assert_eq!(popped_value, Some(2));
+
+    let popped_value = ll.pop_from_position(0);
+    assert_eq!(popped_value, Some(0));
+
+    let vec_list: Vec<i32> = ll.into();
+    assert_eq!(vec![1], vec_list);
+
+    //assert_eq!(0, ll.pop_head().unwrap());
 }
